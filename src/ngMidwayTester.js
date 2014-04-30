@@ -217,9 +217,15 @@
      * @method visit
      */
     visit : function(path, callback) {
-      this.rootScope().__view_status = ++$viewCounter;
+      var scope = this.rootScope(),
+        that =  this;
+      scope.__view_status = ++$viewCounter;    
       this.until(function() {
-        return parseInt($terminalElement.attr('status')) >= $viewCounter;
+        if (that.inject('$route').current.scope === undefined) {
+          //console.log('still no scope! this sometimes happens and causes promblems ');
+          return false;
+        }
+        return parseInt($terminalElement.attr('status')) >= $viewCounter && scope.$$phase == null;
       }, callback || noop);
 
       var $location = this.inject('$location');
@@ -245,7 +251,17 @@
       }, delay); 
       $timers.push(timer);
     },
-
+    /**
+     * An helper function useful when waiting for a page transition not caused from visit()
+     */
+    stabilize: function (callback) {
+      this.rootScope().__view_status = ++$viewCounter;
+      var myScope= this.rootScope();
+      this.until(function () {
+        return parseInt($terminalElement.attr('status')) >= $viewCounter && myScope.$$phase == null;
+      }, callback);
+    },
+    
     /**
      * Removes the $rootElement and clears the module from the page
      *
