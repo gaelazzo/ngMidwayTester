@@ -221,7 +221,8 @@
         that =  this;
       scope.__view_status = ++$viewCounter;    
       this.until(function() {
-        if (that.inject('$route').current.scope === undefined) {
+        if (that.inject('$route').current === undefined ||
+            that.inject('$route').current.scope === undefined) {
           //console.log('still no scope! this sometimes happens and causes promblems ');
           return false;
         }
