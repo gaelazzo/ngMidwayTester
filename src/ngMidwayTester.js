@@ -218,7 +218,7 @@
      */
     visit : function(path, callback) {
       var $location = this.inject('$location');
-      stabilize(callback || noop);
+      this.stabilize(callback || noop);
       this.apply(function() {
         $location.path(path);
       });
