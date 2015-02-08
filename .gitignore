@@ -6,3 +6,6 @@ npm-debug.log
 .agignore
 /coverage
 .idea
+/.idea/jsLibraryMappings.xml
+/.idea/misc.xml
+/.idea/libraries/ngMidwayTester_node_modules.xml
