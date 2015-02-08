@@ -1,6 +1,6 @@
 /**
- * Creates an instance of the midway tester on the specified module. 
- * 
+ * Creates an instance of the midway tester on the specified module.
+ *
  * @class ngMidwayTester
  * @constructor
  * @param moduleName the AngularJS module that you wish to test
@@ -137,7 +137,7 @@
      * @return {Object} The scope of the current view element
      */
     viewScope : function() {
-      return this.viewElement().scope();
+      return this.viewElement().scope()|| this.rootScope();
     },
 
     /**
@@ -169,7 +169,16 @@
      * @param {Object} [scope=$rootScope] The scope object which will be used for the compilation
      */
     digest : function(scope) {
-      (scope || this.rootScope()).$digest();
+      var s = scope || this.rootScope();
+      if(!s.$$phase) {
+        //console.log('routed to digest');
+        s.$digest();
+      }
+      else {
+        //$timeout = this.inject('$timeout');
+        //console.log('skipped digest');
+        //$timeout(this.digest);
+      }
     },
 
     /**
@@ -218,7 +227,18 @@
      */
     visit : function(path, callback) {
       var $location = this.inject('$location');
-      this.stabilize(callback || noop);
+
+      //this.stabilize(callback || noop);
+      //this.apply(function() {
+      //  $location.path(path);
+      //});
+
+      this.rootScope().__view_status = ++$viewCounter;
+      this.until(function() {
+        return parseInt($terminalElement.attr('status')) >= $viewCounter;
+      }, callback || noop);
+
+      var $location = this.inject('$location');
       this.apply(function() {
         $location.path(path);
       });
@@ -228,19 +248,20 @@
      * Keeps checking an expression until it returns a truthy value and then runs the provided callback
      *
      * @param {function} exp The given function to poll
-     * @param {function} callback The given callback to fire once the exp function returns a truthy value 
+     * @param {function} callback The given callback to fire once the exp function returns a truthy value
      * @method until
      */
     until : function(exp, callback) {
-      var timer, delay = 50;
+      var timer, delay = 30;
       timer = setInterval(function() {
         if(exp()) {
           clearTimeout(timer);
           callback();
         }
-      }, delay); 
+      }, delay);
       $timers.push(timer);
     },
+
     /**
      * An helper function useful when waiting for a page transition not caused from visit()
      */
@@ -249,15 +270,17 @@
         that = this;
       scope.__view_status = ++$viewCounter;
       this.until(function () {
-        if (that.inject('$route').current !== undefined &&
-            that.inject('$route').current.scope === undefined) {
-          //console.log('still no scope! this sometimes happens and causes promblems ');
-          return false;
-        }
+        scope= that.rootScope();
+        //console.log('route.current = '+JSON.stringify(that.inject('$route').current.$scope));
+        //if (that.inject('$route').current !== undefined &&
+        //    that.inject('$route').current.$scope === undefined) {
+        //    console.log('still no scope! this sometimes happens and causes problems ');
+        //  return false;
+        //}
         return parseInt($terminalElement.attr('status')) >= $viewCounter && scope.$$phase === null;
       }, callback);
     },
-    
+
     /**
      * Removes the $rootElement and clears the module from the page
      *
