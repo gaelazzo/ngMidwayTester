@@ -5,3 +5,4 @@ libpeerconnection.log
 npm-debug.log
 .agignore
 /coverage
+.idea
