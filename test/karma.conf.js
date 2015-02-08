@@ -11,9 +11,27 @@ module.exports = function(config) {
     ],
     singleRun: true,
     frameworks: ['mocha'],
-    browsers: ['Chrome'],
+
+      // Start these browsers, currently available:
+      // - Chrome
+      // - ChromeCanary
+      // - Firefox
+      // - Opera
+      // - Safari (only Mac)
+      // - PhantomJS
+      // - IE (only Windows)
+    browsers: ['PhantomJS'],
     proxies: {
       '/': 'http://localhost:8844/'
     }
+      ,
+
+      // Which plugins to enable
+      plugins: [
+          'karma-phantomjs-launcher',
+          'karma-jasmine',
+          'karma-mocha'
+          //'karma-junit-reporter'
+      ],
   });
 };
