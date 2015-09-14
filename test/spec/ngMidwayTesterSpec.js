@@ -164,7 +164,7 @@ describe('ngMidwayTester', function() {
       tester.visit('/', function() {
         expect(tester.path()).to.equal('/');
         done();
-      });
+      },true);
     });
 
     it('should update the when by the time the callback is called', function(done) {

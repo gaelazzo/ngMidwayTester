@@ -18,7 +18,7 @@ module.exports = function(grunt) {
       },
       bower_install: {
         command: 'node ./node_modules/bower/bin/bower install'
-      },
+      }
     },
 
     connect: {

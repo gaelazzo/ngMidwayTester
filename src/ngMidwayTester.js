@@ -38,6 +38,8 @@
         $delegate.path = function(path) {
           if(path) {
             _path = path;
+            //console.log('$rootScope.$broadcast("$locationChangeSuccess", ', path,');');
+            $rootScope.$broadcast('$locationChangeStart', path);
             $rootScope.$broadcast('$locationChangeSuccess', path);
             return this;
           }
@@ -225,23 +227,35 @@
      * @param {function} [callback] The given callback to fire once the view has been fully loaded
      * @method visit
      */
-    visit : function(path, callback) {
-      var $location = this.inject('$location');
-
-      //this.stabilize(callback || noop);
-      //this.apply(function() {
-      //  $location.path(path);
-      //});
-
-      this.rootScope().__view_status = ++$viewCounter;
-      this.until(function() {
-        return parseInt($terminalElement.attr('status')) >= $viewCounter;
-      }, callback || noop);
+    visit : function(path, callback, noView) {
+      this.delayed(callback,noView)();
 
       var $location = this.inject('$location');
       this.apply(function() {
         $location.path(path);
       });
+
+    },
+
+    delayed: function(callback,noView){
+      var that=this;
+      if (noView === undefined) {
+        noView=false;
+      }
+      return function(){
+        that.rootScope().__view_status = ++$viewCounter;
+        console.log('rootScope augmented');
+        that.until(function(){
+          if (!noView) {
+            if (!that.viewScope()) {
+              console.log('no viewScope');
+              return false;
+            }
+          }
+          console.log('viewScope is here');
+          return parseInt($terminalElement.attr('status')) >= $viewCounter;
+        },callback || noop);
+      }
     },
 
     /**
@@ -252,10 +266,12 @@
      * @method until
      */
     until : function(exp, callback) {
-      var timer, delay = 30;
+      var timer, delay = 50;
       timer = setInterval(function() {
+        console.log('evaluating exp...');
         if(exp()) {
           clearTimeout(timer);
+          console.log('calling callback');
           callback();
         }
       }, delay);
