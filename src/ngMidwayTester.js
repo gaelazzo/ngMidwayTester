@@ -70,7 +70,7 @@
     $viewContainer = view.parent();
   }
   else {
-    $viewContainer = angular.element('<div><div ng-view></div></div>');
+    $viewContainer = angular.element('<div><div ng-view = ""></div></div>');
     $rootElement.append($viewContainer);
   }
 
@@ -139,7 +139,7 @@
      * @return {Object} The scope of the current view element
      */
     viewScope : function() {
-      return this.viewElement().scope()|| this.rootScope();
+      return this.viewElement().scope();
     },
 
     /**
@@ -173,7 +173,6 @@
     digest : function(scope) {
       var s = scope || this.rootScope();
       if(!s.$$phase) {
-        //console.log('routed to digest');
         s.$digest();
       }
       else {
@@ -244,15 +243,12 @@
       }
       return function(){
         that.rootScope().__view_status = ++$viewCounter;
-        console.log('rootScope augmented');
         that.until(function(){
           if (!noView) {
             if (!that.viewScope()) {
-              console.log('no viewScope');
               return false;
             }
           }
-          console.log('viewScope is here');
           return parseInt($terminalElement.attr('status')) >= $viewCounter;
         },callback || noop);
       }
@@ -266,36 +262,16 @@
      * @method until
      */
     until : function(exp, callback) {
-      var timer, delay = 50;
+      var timer, delay = 30;
       timer = setInterval(function() {
-        console.log('evaluating exp...');
         if(exp()) {
           clearTimeout(timer);
-          console.log('calling callback');
           callback();
         }
       }, delay);
       $timers.push(timer);
     },
 
-    /**
-     * An helper function useful when waiting for a page transition not caused from visit()
-     */
-    stabilize: function (callback) {
-      var scope= this.rootScope(),
-        that = this;
-      scope.__view_status = ++$viewCounter;
-      this.until(function () {
-        scope= that.rootScope();
-        //console.log('route.current = '+JSON.stringify(that.inject('$route').current.$scope));
-        //if (that.inject('$route').current !== undefined &&
-        //    that.inject('$route').current.$scope === undefined) {
-        //    console.log('still no scope! this sometimes happens and causes problems ');
-        //  return false;
-        //}
-        return parseInt($terminalElement.attr('status')) >= $viewCounter && scope.$$phase === null;
-      }, callback);
-    },
 
     /**
      * Removes the $rootElement and clears the module from the page

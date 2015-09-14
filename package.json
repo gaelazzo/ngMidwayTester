@@ -1,9 +1,9 @@
 {
   "name": "ng-midway-tester",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "repository": {
     "type": "git",
-    "url": "git@github.com:yearofmoo/ngMidwayTester.git"
+    "url": "https://github.com/gaelazzo/ngMidwayTester"
   },
   "scripts": {
     "test": "grunt travis"
