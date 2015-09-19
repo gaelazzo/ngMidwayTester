@@ -12,7 +12,9 @@
  * @param {Object} [config.mockLocationPaths=true] Whether or not to fake the URL change in the browser address bar
  * @return {Object} An instance of the midway tester
  */
-;var ngMidwayTester = function(moduleName, options) {
+
+
+;var ngMidwayTester = function(moduleName, options, deferred) {
 
   options = options || {};
   var doc = options.document || document;
@@ -21,6 +23,7 @@
 
   var mockLocationPaths = options.mockLocationPaths == null ? true : !!options.mockLocationPaths;
 
+
   var $rootElement = angular.element(doc.createElement('div')),
       $timers = [],
       $viewContainer,
@@ -28,8 +31,17 @@
       $viewCounter = 0;
 
   var viewSelector = 'ng-view, [ng-view], .ng-view, [x-ng-view], [data-ng-view]';
+  var $injector;
 
-  var midwayModule = angular.module('ngMidway', []);
+
+
+  var midwayModule = angular.module('ngMidway', [])
+      .config(
+      ['$injector', function($i) {
+        $injector = $i;
+        if (deferred) deferred.resolve();
+      }]
+  );
 
   if(mockLocationPaths) {
     midwayModule.config(function($provide) {
@@ -70,16 +82,16 @@
     $viewContainer = view.parent();
   }
   else {
-    $viewContainer = angular.element('<div><div ng-view = ""></div></div>');
+    $viewContainer = angular.element('<div><div ng-view></div></div>');
     $rootElement.append($viewContainer);
   }
 
   $terminalElement = angular.element('<div status="{{__view_status}}"></div>');
   $rootElement.append($terminalElement);
 
-  var $injector = angular.bootstrap($rootElement, ['ng','ngMidway',moduleName]);
+  $injector = angular.bootstrap($rootElement, ['ng','ngMidway',moduleName]);
   var $rootModule = angular.module(moduleName);
-  angular.element(doc.body).append($rootElement);
+  angular.element(doc.body).prepend($rootElement);
 
   return {
     /**
@@ -171,14 +183,15 @@
      * @param {Object} [scope=$rootScope] The scope object which will be used for the compilation
      */
     digest : function(scope) {
+      //(scope || this.rootScope()).$digest();
       var s = scope || this.rootScope();
       if(!s.$$phase) {
         s.$digest();
       }
       else {
-        //$timeout = this.inject('$timeout');
+        var $timeout = this.inject('$timeout');
         //console.log('skipped digest');
-        //$timeout(this.digest);
+        $timeout(this.digest);
       }
     },
 
@@ -190,7 +203,7 @@
      * @param {Object} [scope=$rootScope] scope The scope object which the apply process will be run on
      */
     apply : function(fn, scope) {
-      scope = scope || this.inject('$rootScope');
+      scope = scope || scope || this.inject('$rootScope');   //$rootScope
       scope.$$phase ? fn() : scope.$apply(fn);
     },
 
@@ -227,7 +240,7 @@
      * @method visit
      */
     visit : function(path, callback, noView) {
-      this.delayed(callback,noView)();
+      this.delayed(callback, noView)();
 
       var $location = this.inject('$location');
       this.apply(function() {
@@ -236,24 +249,35 @@
 
     },
 
-    delayed: function(callback,noView){
+    delayed: function(callback, noView){
       var that=this;
+      if (callback.$$$isDelayed) {
+        return callback; //just to be sure a function is never double delayed
+      }
       if (noView === undefined) {
         noView=false;
       }
-      return function(){
+
+      return function() {
+        this.$$$isDelayed=true; //just to be sure a function is never double delayed
+        var args = Array.prototype.slice.call(arguments);
+        var myFun= function(){
+          callback.apply(null,args);
+        };
         that.rootScope().__view_status = ++$viewCounter;
-        that.until(function(){
+        that.until(function () {
           if (!noView) {
             if (!that.viewScope()) {
               return false;
             }
+            if(that.viewScope().$$phase){
+              return false;
+            }
           }
           return parseInt($terminalElement.attr('status')) >= $viewCounter;
-        },callback || noop);
+        }, myFun || noop);
       }
     },
-
     /**
      * Keeps checking an expression until it returns a truthy value and then runs the provided callback
      *
@@ -262,11 +286,15 @@
      * @method until
      */
     until : function(exp, callback) {
+
       var timer, delay = 30;
       timer = setInterval(function() {
         if(exp()) {
-          clearTimeout(timer);
+          clearInterval(timer);
           callback();
+        }
+        else {
+          active = true;
         }
       }, delay);
       $timers.push(timer);
@@ -280,13 +308,13 @@
      */
     destroy : function() {
       angular.forEach($timers, function(timer) {
-        clearTimeout(timer);
+        clearInterval(timer);
       });
 
-     var body = angular.element(document.body);
-     body.removeData();
-     $rootElement.remove();
-     this.rootScope().$destroy();
+      var body = angular.element(document.body);
+      body.removeData();
+      $rootElement.remove();
+      this.rootScope().$destroy();
     }
   };
 };

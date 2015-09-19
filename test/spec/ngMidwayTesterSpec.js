@@ -263,4 +263,41 @@ describe('ngMidwayTester', function() {
       tester3.destroy();
     });
   });
+
+  describe ('System functions', function(){
+
+    beforeEach(function() {
+      example = angular.module(appName, [])
+          .factory('factory', function() {
+            return function() {
+              return 'hello';
+            }
+          })
+          .controller('HomeCtrl', function($scope, factory) {
+            $scope.factory = factory;
+          });
+
+      tester = ngMidwayTester(appName, {
+        template :  '<head><base href="/"></head>' +
+        '<body>' +
+        '<div>' +
+        '  <h1>Help Desk</h1>' +
+        '  <div id="view-container">' +
+        '    <div ng-view =""></div>' +
+        '  </div>' +
+        '</div></body>'
+      });
+      newScope = tester.rootScope().$new();
+    });
+
+
+    it ('calling setTimeout should call a function after some time', function(done){
+      var s = function(){
+        expect(s).to.exist();
+        clearTimeout(s);
+        done();
+      };
+      setTimeout(s,1000);
+    });
+  })
 });
