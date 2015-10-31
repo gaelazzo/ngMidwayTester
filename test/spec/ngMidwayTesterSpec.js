@@ -1,3 +1,5 @@
+var expect = chai.expect;
+
 describe('ngMidwayTester', function() {
 
   var tester,
@@ -40,86 +42,211 @@ describe('ngMidwayTester', function() {
   });
 
   describe('template options', function() {
-    it('should use a custom index.html template string', function(done) {
-      var example = angular.module(appName, ['ngRoute'])
-        .run(function($rootScope) {
-          $rootScope.value = 'true';
-        })
-        .config(function($routeProvider) {
-          $routeProvider.when('/path2', {
-            controller: function($scope) {
-              $scope.page = 'two'; 
-            },
-            template : 'two'
+      it('should use a custom index.html template string', function (done) {
+          var example = angular.module(appName, ['ui.router'])
+              .run(function ($rootScope) {
+                  $rootScope.value = 'true';
+              })
+              .config(function ($stateProvider, $urlRouterProvider, $locationProvider) {
+                  $stateProvider
+                      .state('path2', {
+                          url: '/path2',
+                          controller: function ($scope) {
+                              this.woof = 'hello';
+                          },
+                          controllerAs: 'dog',
+                          template: 'two {{dog.woof}}'
+                      })
+              });
+
+
+          tester = ngMidwayTester(appName, {
+              template: '<h1>title</h1>' +
+              '<div ui-view></div>'
           });
-        });
+          expect(tester.module()).to.equal(example);
+          expect(tester.rootScope().value).to.equal('true');
 
-      tester = ngMidwayTester(appName, {
-        template : '<h1>title</h1>' +
-                   '<div ng-view></div>'
-      });
-      expect(tester.module()).to.equal(example);
-      expect(tester.rootScope().value).to.equal('true');
-
-      tester.visit('/path2', function() {
-        expect(tester.path()).to.equal('/path2');
-        expect(tester.viewElement().text()).to.contain('two');
-        done();
-      });
-    });
-
-    it('should use a custom index.html template file', function(done) {
-      var example = angular.module(appName, ['ngRoute'])
-        .run(function($rootScope) {
-          $rootScope.value = 'true';
-        })
-        .config(function($routeProvider) {
-          $routeProvider.when('/path-10', {
-            controller: function($scope) {
-              $scope.page = 'ten'; 
-            },
-            template : 'ten'
+          tester.visit('/path2', function () {
+              expect(tester.path()).to.equal('/path2');
+              expect(tester.viewElement().text()).to.contain('two');
+              expect(tester.viewElement().text()).to.contain('hello');
+              expect(tester.currentState().controllerAs).to.equal('dog');
+              done();
           });
-        });
-
-      tester = ngMidwayTester(appName, {
-        templateUrl : './test/spec/custom-view.html'
       });
 
-      expect(tester.module()).to.equal(example);
-      expect(tester.rootScope().value).to.equal('true');
+      it('should use a custom index.html template file', function (done) {
+          var example = angular.module(appName, ['ui.router'])
+              .run(function ($rootScope) {
+                  $rootScope.value = 'true';
+              })
+              .config(function ($stateProvider, $urlRouterProvider, $locationProvider) {
+                  $stateProvider
+                      .state('path-10', {
+                          url: '/path-10',
+                          controller: function ($scope) {
+                              $scope.page = 'ten';
+                          },
+                          template: 'ten'
+                      })
+              });
 
-      tester.visit('/path-10', function() {
-        expect(tester.path()).to.equal('/path-10');
-        var html = tester.rootElement().html();
-        expect(html).to.contain('<main id="container">');
-        expect(html).to.contain('ten');
-        done();
-      });
-    });
 
-    it('should throw an error when a file downloaded from templateUrl is not found', function() {
-      var example = angular.module(appName, ['ngRoute'])
-        .run(function($rootScope) {
-          $rootScope.value = 'true';
-        })
-        .config(function($routeProvider) {
-          $routeProvider.when('/path-10', {
-            controller: function($scope) {
-              $scope.page = 'ten'; 
-            },
-            template : 'ten'
+          tester = ngMidwayTester(appName, {
+              templateUrl: './test/spec/custom-view.html'
           });
-        });
 
-      var fn = function() {
-        tester = ngMidwayTester(appName, {
-          templateUrl : '../../some-file.html'
-        });
-      };
+          expect(tester.module()).to.equal(example);
+          expect(tester.rootScope().value).to.equal('true');
 
-      expect(fn).to.throw('ngMidwayTester: Unable to download template file');
-    });
+          tester.visit('/path-10', function () {
+              expect(tester.path()).to.equal('/path-10');
+              var html = tester.rootElement().html();
+              expect(html).to.contain('<main id="container">');
+              expect(html).to.contain('ten');
+              done();
+          });
+      });
+
+
+
+      it('should use a custom index.html template file with nested views', function (done) {
+          var example = angular.module(appName, ['ui.router'])
+              .run(function ($rootScope) {
+                  $rootScope.value = 'true';
+              })
+              .config(function ($stateProvider, $urlRouterProvider, $locationProvider) {
+                  $stateProvider
+                      .state('nested', {
+                          url: '/nested',
+                          controller: function ($scope) {
+                              $scope.page = 'ten';
+                          },
+                          views:{
+                              'main':{
+                                  template:'MainContent'
+                              },
+                              'secondary':{
+                                  template:'SecondaryContent'
+                              }
+                          }
+                      })
+              });
+
+
+          tester = ngMidwayTester(appName, {
+              templateUrl: './test/spec/custom-view2.html'
+          });
+
+          expect(tester.module()).to.equal(example);
+          expect(tester.rootScope().value).to.equal('true');
+
+          tester.visit('/nested', function () {
+
+              expect(tester.path()).to.equal('/nested');
+              var html = tester.rootElement().html();
+              expect(html).to.contain('Nice view');
+              expect(html).to.contain('MainContent');
+              done();
+          });
+      });
+
+      it('should get data from nested views', function (done) {
+          var example = angular.module(appName, ['ui.router'])
+              .run(function ($rootScope) {
+                  $rootScope.value = 'true';
+              })
+              .config(function ($stateProvider, $urlRouterProvider, $locationProvider) {
+                  $stateProvider
+                      .state('nested', {
+                          url: '/nested',
+                          controller: function ($scope) {
+                              this.page = 'ten';
+                          },
+                          controllerAs:'cat',
+                          views: {
+                              'main': {
+                                  template: 'MainContent'
+                              },
+                              'secondary': {
+                                  templateUrl: './test/spec/custom-view4.html'
+                              },
+                              'main3@nested': {
+                                  template: 'hot content'
+                              },
+                              'secondary3@nested': {
+                                  templateUrl: './test/spec/custom-view3.html'
+                              },
+                              'blue@nested': {
+                                  template: 'I like blue'
+                              },
+                              'red@nested': {
+                                  template: 'I also like red'
+                              }
+
+
+                          }
+                      })
+              });
+
+
+          tester = ngMidwayTester(appName, {
+              templateUrl: './test/spec/custom-view2.html'
+          });
+
+          expect(tester.module()).to.equal(example);
+          expect(tester.rootScope().value).to.equal('true');
+
+          tester.visit('/nested', function () {
+
+
+
+
+
+              expect(tester.path()).to.equal('/nested');
+              var htmlMain = tester.viewElement('main').html();
+              expect(htmlMain).to.contain('MainContent');
+              var htmlSecondary = tester.viewElement('secondary').html();
+              expect(htmlSecondary).to.contain('Bad view');
+              var htmlSecondaryMain = tester.viewElement(['secondary', 'main3']).html();
+              expect(htmlSecondaryMain).to.contain('hot content');
+              var htmlBlueSecondaryMain = tester.viewElement(['secondary', 'secondary3', 'blue']).html();
+              expect(htmlBlueSecondaryMain).to.contain('I like blue');
+              var htmlRedSecondaryMain = tester.viewElement(['secondary', 'secondary3', 'red']).html();
+              expect(htmlRedSecondaryMain).to.contain('I also like red');
+              done();
+          });
+
+
+      });
+
+
+      it('should throw an error when a file downloaded from templateUrl is not found', function () {
+          var example = angular.module(appName, ['ui.router'])
+              .run(function ($rootScope) {
+                  $rootScope.value = 'true';
+              })
+              .config(function ($stateProvider, $urlRouterProvider, $locationProvider) {
+                  $stateProvider
+                      .state('path-10', {
+                          url: '/path-10',
+                          controller: function ($scope) {
+                              $scope.page = 'ten';
+                          },
+                          template: 'ten'
+                      })
+              });
+
+
+          var fn = function () {
+              tester = ngMidwayTester(appName, {
+                  templateUrl: '../../some-file.html'
+              });
+          };
+
+          expect(fn).to.throw('ngMidwayTester: Unable to download template file');
+      });
   });
 
   describe('scope', function() {
@@ -154,53 +281,57 @@ describe('ngMidwayTester', function() {
   });
 
   describe('routing', function() {
-    it('should change the path', function(done) {
-      var example = angular.module(appName, ['ngRoute'])
-        .run(function($rootScope) {
-          $rootScope.value = 'true';
-        });
+      it('should change the path', function (done) {
+          var example = angular.module(appName, ['ui.router'])
+              .run(function ($rootScope) {
+                  $rootScope.value = 'true';
+              });
 
-      tester = ngMidwayTester(appName, true);
-      tester.visit('/', function() {
-        expect(tester.path()).to.equal('/');
-        done();
-      },true);
-    });
-
-    it('should update the when by the time the callback is called', function(done) {
-      var example = angular.module(appName, ['ngRoute'])
-        .config(function($routeProvider) {
-          $routeProvider.when('/path', {
-            controller: function($scope) {
-              $scope.page = 'one'; 
-            },
-            template : '...'
-          });
-          $routeProvider.when('/path2', {
-            controller: function($scope) {
-              $scope.page = 'two'; 
-            },
-            template : '==='
-          });
-        });
-
-      tester = ngMidwayTester(appName, true);
-      tester.attach();
-
-      tester.visit('/path', function() {
-        expect(tester.path()).to.equal('/path');
-        expect(tester.rootElement().text()).to.equal('...');
-        expect(tester.viewScope().page).to.equal('one');
-
-        tester.visit('/path2', function() {
-          expect(tester.path()).to.equal('/path2');
-          expect(tester.rootElement().text()).to.equal('===');
-          expect(tester.viewScope().page).to.equal('two');
-
-          done();
-        });
+          tester = ngMidwayTester(appName, true);
+          tester.visit('/', function () {
+              expect(tester.path()).to.equal('/');
+              done();
+          }, true);
       });
-    });
+
+      it('should update the when by the time the callback is called', function (done) {
+          var example = angular.module(appName, ['ui.router'])
+              .config(function ($stateProvider, $urlRouterProvider, $locationProvider) {
+                  $stateProvider
+                      .state('path', {
+                          url: '/path',
+                          controller: function ($scope) {
+                              $scope.page = 'one';
+                          },
+                          template: '...'
+                      })
+                      .state('path2', {
+                          url: '/path2',
+                          controller: function ($scope) {
+                              $scope.page = 'two';
+                          },
+                          template: '==='
+                      })
+              });
+
+
+          tester = ngMidwayTester(appName, true);
+          tester.attach();
+
+          tester.visit('/path', function () {
+              expect(tester.path()).to.equal('/path');
+              expect(tester.rootElement().text()).to.equal('...');
+              expect(tester.viewScope().page).to.equal('one');
+
+              tester.visit('/path2', function () {
+                  expect(tester.path()).to.equal('/path2');
+                  expect(tester.rootElement().text()).to.equal('===');
+                  expect(tester.viewScope().page).to.equal('two');
+
+                  done();
+              });
+          });
+      });
   });
 
   describe('controllers', function() {

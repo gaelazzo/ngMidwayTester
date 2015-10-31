@@ -5,12 +5,11 @@ module.exports = function(config) {
     files : [
       './node_modules/chai/chai.js',
       './bower_components/angular/angular.js',
-      './bower_components/angular-route/angular-route.js',
+      './bower_components/angular-ui-router/release/angular-ui-router.min.js',
       './src/ngMidwayTester.js',
-      './test/lib/chai.js',
-      './test/spec/ngMidwayTesterSpec.js'
+      './test/spec/*.js'
     ],
-    singleRun: true,
+    logLevel : config.LOG_INFO,
     frameworks: ['mocha'],
 
       // Start these browsers, currently available:
@@ -30,9 +29,8 @@ module.exports = function(config) {
       // Which plugins to enable
       plugins: [
           'karma-phantomjs-launcher',
-          'karma-jasmine',
-          'karma-mocha'
-          //'karma-junit-reporter'
-      ],
+        'karma-mocha'
+         // 'karma-jasmine'
+      ]
   });
 };
