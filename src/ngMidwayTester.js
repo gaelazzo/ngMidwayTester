@@ -266,16 +266,10 @@ var ngMidwayTester = function (moduleName, options, deferred) {
 
         /**
          * Changes the current route of the page and then fires the callback when the page has loaded
-         *
-         * @param {String} path The given path that the current route will be changed to
-         * @param {function} [callback] The given callback to fire once the view has been fully loaded
-         * @param {bool} [noView] when false, does not wait for viewScope() to be available and ready
          * @method visit
+         * @param {String} path The given path that the current route will be changed to
          */
-        visit: function (path, callback, noView) {
-            var that= this,q;
-            this.delayed(callback, noView)();
-
+        visit: function (path) {
             var $location = this.inject('$location');
             this.apply(function () {
 
@@ -284,21 +278,102 @@ var ngMidwayTester = function (moduleName, options, deferred) {
 
         },
 
-        delayed: function (callback, noView) {
+        /**
+         * @method timeOut
+         * Calls a method after a angular timeout
+         * @param fn
+         */
+        callFnOnTimeOut: function(fn, args){
+            var $timeout = this.inject('$timeout');
+            return function() {
+                $timeout(function () {
+                    fn.apply(null, args);
+                })
+            }
+        },
+
+        /**
+         * Transforms a function into a function that will be called after a view will be available
+         * @method waitForViewElement
+         * @param {function} [fn] The given callback to fire once the view has been fully loaded
+         * @param {bool} [noView] when false, does not wait for viewScope() to be available and ready
+         * @returns {*}
+         */
+        waitForViewScopeCondition: function (fn, viewName, condition){
             var that = this;
-            if (callback.$$$isDelayed) {
-                return callback; //just to be sure a function is never double delayed
+            if (fn.$$$isViewDelayed) {
+                return fn; //just to be sure a function is never double delayed
+            }
+            return function () {
+                this.$$$isViewDelayed = true; //just to be sure a function is never double delayed
+                var args = Array.prototype.slice.call(arguments);
+                var myFun = that.callFnOnTimeOut(fn,args);
+                that.until(function () {
+                    //console.log(that.viewElement(viewName));
+                    if (!that.viewElement(viewName))return false;
+                    if (!that.viewElement(viewName).scope) return false;
+                    var scope = that.viewElement(viewName).scope();
+                    //console.log(scope);
+                    return condition(scope);
+                }, myFun || noop);
+            }
+        },
+
+        waitForControllerInViewScope: function (fn, viewName, controllerName){
+            return this.waitForViewScopeCondition(fn, viewName, function(scope){
+                if (!scope) return false;
+                if (!scope[controllerName])return false;
+                return (scope[controllerName].constructor instanceof Function);
+            })
+        },
+
+
+        /**
+         * Transforms a function into a function that will be called after a view will be available
+         * @method waitForViewElement
+         * @param {function} [fn] The given callback to fire once the view has been fully loaded
+         * @param {bool} [noView] when false, does not wait for viewScope() to be available and ready
+         * @returns {*}
+         */
+        waitForViewCondition: function (fn, viewName, condition){
+            var that = this;
+            if (fn.$$$isViewDelayed) {
+                return fn; //just to be sure a function is never double delayed
+            }
+            return function () {
+                this.$$$isViewDelayed = true; //just to be sure a function is never double delayed
+                var args = Array.prototype.slice.call(arguments);
+                var myFun = that.callFnOnTimeOut(fn,args);
+                that.until(function () {
+                    var view=that.viewElement(viewName);
+                    if (!view)return false;
+                    //console.log(scope);
+                    return condition(view);
+                }, myFun || noop);
+            }
+        },
+
+
+        /**
+         * Transforms a function into a function that will be called after a complete digest will have happened
+         * @method waitForDigest
+         * @param {function} [fn] The given callback to fire once the view has been fully loaded
+         * @param {bool} [noView] when false, does not wait for viewScope() to be available and ready
+         * @returns {*}
+         */
+        waitForDigest: function (fn, noView) {
+            var that = this;
+            if (fn.$$$isDigestDelayed) {
+                return fn; //just to be sure a function is never double delayed
             }
             if (noView === undefined) {
                 noView = false;
             }
 
             return function () {
-                this.$$$isDelayed = true; //just to be sure a function is never double delayed
+                this.$$$isDigestDelayed = true; //just to be sure a function is never double delayed
                 var args = Array.prototype.slice.call(arguments);
-                var myFun = function () {
-                    callback.apply(null, args);
-                };
+                var myFun = that.callFnOnTimeOut(fn,args);
                 that.rootScope().__view_status = ++$viewCounter;
                 that.until(function () {
                     if (!noView) {
@@ -322,7 +397,7 @@ var ngMidwayTester = function (moduleName, options, deferred) {
          */
         until: function (exp, callback) {
 
-            var timer, delay = 30;
+            var timer, delay = 0;
             timer = setInterval(function () {
                 if (exp()) {
                     clearInterval(timer);

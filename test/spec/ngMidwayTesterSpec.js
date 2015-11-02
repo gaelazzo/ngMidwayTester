@@ -67,13 +67,14 @@ describe('ngMidwayTester', function() {
           expect(tester.module()).to.equal(example);
           expect(tester.rootScope().value).to.equal('true');
 
-          tester.visit('/path2', function () {
+          tester.visit('/path2');
+          tester.waitForControllerInViewScope(function () {
               expect(tester.path()).to.equal('/path2');
               expect(tester.viewElement().text()).to.contain('two');
               expect(tester.viewElement().text()).to.contain('hello');
               expect(tester.currentState().controllerAs).to.equal('dog');
               done();
-          });
+          },null,'dog')();
       });
 
       it('should use a custom index.html template file', function (done) {
@@ -91,8 +92,6 @@ describe('ngMidwayTester', function() {
                           template: 'ten'
                       })
               });
-
-
           tester = ngMidwayTester(appName, {
               templateUrl: './test/spec/custom-view.html'
           });
@@ -100,16 +99,20 @@ describe('ngMidwayTester', function() {
           expect(tester.module()).to.equal(example);
           expect(tester.rootScope().value).to.equal('true');
 
-          tester.visit('/path-10', function () {
+          tester.visit('/path-10');
+          tester.waitForViewScopeCondition(function () {
               expect(tester.path()).to.equal('/path-10');
               var html = tester.rootElement().html();
               expect(html).to.contain('<main id="container">');
               expect(html).to.contain('ten');
+                  var viewEl = tester.viewElement().html();
+                  expect(viewEl).to.contain('ten');
               done();
-          });
+          },null,
+          function(scope){
+              return scope.page;
+          })();
       });
-
-
 
       it('should use a custom index.html template file with nested views', function (done) {
           var example = angular.module(appName, ['ui.router'])
@@ -117,17 +120,23 @@ describe('ngMidwayTester', function() {
                   $rootScope.value = 'true';
               })
               .config(function ($stateProvider, $urlRouterProvider, $locationProvider) {
+                  $urlRouterProvider.otherwise("/nested");
+                  $locationProvider.html5Mode(false).hashPrefix('!');
                   $stateProvider
                       .state('nested', {
                           url: '/nested',
-                          controller: function ($scope) {
-                              $scope.page = 'ten';
-                          },
+
                           views:{
-                              'main':{
+                              '':{
+                                  controller: function ($scope) {
+                                      this.page = 'ten';
+                                  },
+                                  controllerAs:'dog'
+                              },
+                              'main@nested':{
                                   template:'MainContent'
                               },
-                              'secondary':{
+                              'secondary@nested':{
                                   template:'SecondaryContent'
                               }
                           }
@@ -142,14 +151,16 @@ describe('ngMidwayTester', function() {
           expect(tester.module()).to.equal(example);
           expect(tester.rootScope().value).to.equal('true');
 
-          tester.visit('/nested', function () {
-
+          tester.visit('/nested');
+          tester.waitForViewScopeCondition(function () {
               expect(tester.path()).to.equal('/nested');
-              var html = tester.rootElement().html();
+              var html = tester.viewElement().html();
               expect(html).to.contain('Nice view');
               expect(html).to.contain('MainContent');
               done();
-          });
+          },null,function(scope){
+              return scope.dog && scope.dog.page;
+          })();
       });
 
       it('should get data from nested views', function (done) {
@@ -158,18 +169,22 @@ describe('ngMidwayTester', function() {
                   $rootScope.value = 'true';
               })
               .config(function ($stateProvider, $urlRouterProvider, $locationProvider) {
+                  $urlRouterProvider.otherwise("/nested");
+                  $locationProvider.html5Mode(false).hashPrefix('!');
                   $stateProvider
                       .state('nested', {
                           url: '/nested',
-                          controller: function ($scope) {
-                              this.page = 'ten';
-                          },
-                          controllerAs:'cat',
                           views: {
-                              'main': {
+                              '':{
+                                  controller: function ($scope) {
+                                      this.page = 'ten';
+                                  },
+                                  controllerAs:'cat'
+                              },
+                              'main@nested': {
                                   template: 'MainContent'
                               },
-                              'secondary': {
+                              'secondary@nested': {
                                   templateUrl: './test/spec/custom-view4.html'
                               },
                               'main3@nested': {
@@ -184,8 +199,6 @@ describe('ngMidwayTester', function() {
                               'red@nested': {
                                   template: 'I also like red'
                               }
-
-
                           }
                       })
               });
@@ -198,12 +211,8 @@ describe('ngMidwayTester', function() {
           expect(tester.module()).to.equal(example);
           expect(tester.rootScope().value).to.equal('true');
 
-          tester.visit('/nested', function () {
-
-
-
-
-
+          tester.visit('/nested');
+          tester.waitForControllerInViewScope(function () {
               expect(tester.path()).to.equal('/nested');
               var htmlMain = tester.viewElement('main').html();
               expect(htmlMain).to.contain('MainContent');
@@ -216,7 +225,7 @@ describe('ngMidwayTester', function() {
               var htmlRedSecondaryMain = tester.viewElement(['secondary', 'secondary3', 'red']).html();
               expect(htmlRedSecondaryMain).to.contain('I also like red');
               done();
-          });
+          },null,'cat')();
 
 
       });
@@ -228,6 +237,9 @@ describe('ngMidwayTester', function() {
                   $rootScope.value = 'true';
               })
               .config(function ($stateProvider, $urlRouterProvider, $locationProvider) {
+                  $urlRouterProvider.otherwise("/path-10");
+                  $locationProvider.html5Mode(false).hashPrefix('!');
+
                   $stateProvider
                       .state('path-10', {
                           url: '/path-10',
@@ -288,29 +300,43 @@ describe('ngMidwayTester', function() {
               });
 
           tester = ngMidwayTester(appName, true);
-          tester.visit('/', function () {
+          tester.visit('/');
+          tester.waitForDigest(function () {
               expect(tester.path()).to.equal('/');
               done();
-          }, true);
+          })();
       });
 
       it('should update the when by the time the callback is called', function (done) {
           var example = angular.module(appName, ['ui.router'])
               .config(function ($stateProvider, $urlRouterProvider, $locationProvider) {
+                  $urlRouterProvider.otherwise("/path");
+                  $locationProvider.html5Mode(false).hashPrefix('!');
+
                   $stateProvider
                       .state('path', {
                           url: '/path',
-                          controller: function ($scope) {
-                              $scope.page = 'one';
-                          },
-                          template: '...'
+                          views:{
+                              '':{
+                                  controller: function ($scope) {
+                                      $scope.page = 'one';
+                                  },
+                                  template: '...'
+                              }
+                          }
+
                       })
                       .state('path2', {
                           url: '/path2',
-                          controller: function ($scope) {
-                              $scope.page = 'two';
-                          },
-                          template: '==='
+                          views: {
+                              '':{
+                                  controller: function ($scope) {
+                                      $scope.page = 'two';
+                                  },
+                                  template: '==='
+                              }
+                          }
+
                       })
               });
 
@@ -318,19 +344,26 @@ describe('ngMidwayTester', function() {
           tester = ngMidwayTester(appName, true);
           tester.attach();
 
-          tester.visit('/path', function () {
+          tester.visit('/path');
+          var f1, f2;
+          f1 = tester.waitForViewScopeCondition(function(){
               expect(tester.path()).to.equal('/path');
               expect(tester.rootElement().text()).to.equal('...');
               expect(tester.viewScope().page).to.equal('one');
-
-              tester.visit('/path2', function () {
+              tester.visit('/path2');
+              f2();
+          },null,function(scope){
+              return scope.page && scope.page==='one';
+          });
+          f2 = tester.waitForViewScopeCondition(function () {
                   expect(tester.path()).to.equal('/path2');
                   expect(tester.rootElement().text()).to.equal('===');
                   expect(tester.viewScope().page).to.equal('two');
-
                   done();
-              });
+              }, null,function(scope){
+              return scope.page && scope.page==='two';
           });
+          f1();
       });
   });
 
